@@ -34,7 +34,6 @@ const AIDCNetPrototype = () => {
         });
       }
       setNetworkNodes(nodes);
-      setNetworkStats(prev => ({ ...prev, activeNodes: nodes.filter(n => n.status === 'active').length }));
     };
 
     generateNodes();
@@ -47,6 +46,14 @@ const AIDCNetPrototype = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Keep the displayed active-node count derived from current demo node state.
+  useEffect(() => {
+    setNetworkStats(prev => ({
+      ...prev,
+      activeNodes: networkNodes.filter(node => node.status === 'active').length
+    }));
+  }, [networkNodes]);
 
   // Simulate AI metrics updates
   useEffect(() => {
@@ -62,7 +69,7 @@ const AIDCNetPrototype = () => {
   }, []);
 
   // Illustrative algorithm labels only; no cryptographic operations are performed.
-  const generateQuantumKey = () => {
+  const generateAlgorithmLabel = () => {
     const algorithms = ['CRYSTALS-Kyber-1024', 'CRYSTALS-Dilithium', 'SPHINCS+'];
     return algorithms[Math.floor(Math.random() * algorithms.length)];
   };
@@ -75,7 +82,7 @@ const AIDCNetPrototype = () => {
       recipient: `User-${Math.floor(Math.random() * 100)}`,
       timestamp: new Date().toLocaleTimeString(),
       route: networkNodes.filter(n => n.status === 'active').slice(0, 3).map(n => n.id),
-      encryption: generateQuantumKey(),
+      encryption: generateAlgorithmLabel(),
       status: 'routing'
     };
 
@@ -96,7 +103,7 @@ const AIDCNetPrototype = () => {
         {/* Draw connections */}
         {networkNodes.map((node, i) => 
           networkNodes.slice(i + 1).map((otherNode, j) => {
-            if (Math.random() > 0.7 && node.status === 'active' && otherNode.status === 'active') {
+            if (((i * 31 + j * 17) % 10) > 6 && node.status === 'active' && otherNode.status === 'active') {
               return (
                 <line
                   key={`${i}-${j}`}
