@@ -7,7 +7,7 @@ describe("AIDCNet deterministic mesh engine", () => {
     expect(result.delivered).toBe(true);
     expect(result.hops).toBe(3);
     expect(result.path[0]).toBe("peer-a");
-    expect(result.path.at(-1)).toBe("peer-f");
+    expect(result.path[result.path.length - 1]).toBe("peer-f");
   });
 
   it("reroutes around a failed peer when an alternate path exists", () => {
