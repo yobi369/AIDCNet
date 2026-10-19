@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { clampMetric } from './src/lib/demoMetrics';
 import { Network, Shield, Brain, MessageCircle, Users, Activity, Zap, Lock, Globe, Server, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const AIDCNetPrototype = () => {
@@ -13,7 +14,7 @@ const AIDCNetPrototype = () => {
   const [networkStats, setNetworkStats] = useState({
     activeNodes: 0,
     messagesRouted: 0,
-    encryptionStrength: 'Quantum-Resistant',
+    encryptionStrength: 'Not implemented (demo)',
     uptime: 99.9
   });
 
@@ -51,9 +52,9 @@ const AIDCNetPrototype = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setAIMetrics(prev => ({
-        routingEfficiency: Math.max(75, Math.min(99, prev.routingEfficiency + (Math.random() - 0.5) * 4)),
-        threatDetection: Math.max(85, Math.min(99, prev.threatDetection + (Math.random() - 0.5) * 2)),
-        networkHealth: Math.max(80, Math.min(99, prev.networkHealth + (Math.random() - 0.5) * 3))
+        routingEfficiency: clampMetric(prev.routingEfficiency + (Math.random() - 0.5) * 4, 75, 99),
+        threatDetection: clampMetric(prev.threatDetection + (Math.random() - 0.5) * 2, 85, 99),
+        networkHealth: clampMetric(prev.networkHealth + (Math.random() - 0.5) * 3, 80, 99)
       }));
     }, 3000);
 
@@ -171,7 +172,7 @@ const AIDCNetPrototype = () => {
             style={{ width: `${aiMetrics.routingEfficiency}%` }}
           ></div>
         </div>
-        <p className="text-sm mt-2 opacity-90">AI-optimized path selection</p>
+        <p className="text-sm mt-2 opacity-90">Simulated metric; no routing optimizer implemented</p>
       </div>
 
       <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-6 text-white">
@@ -186,7 +187,7 @@ const AIDCNetPrototype = () => {
             style={{ width: `${aiMetrics.threatDetection}%` }}
           ></div>
         </div>
-        <p className="text-sm mt-2 opacity-90">ML-powered security monitoring</p>
+        <p className="text-sm mt-2 opacity-90">Simulated metric; no threat detector implemented</p>
       </div>
 
       <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white">
@@ -201,7 +202,7 @@ const AIDCNetPrototype = () => {
             style={{ width: `${aiMetrics.networkHealth}%` }}
           ></div>
         </div>
-        <p className="text-sm mt-2 opacity-90">Predictive analytics & optimization</p>
+        <p className="text-sm mt-2 opacity-90">Simulated metric; no telemetry or predictor implemented</p>
       </div>
     </div>
   );
@@ -260,8 +261,9 @@ const AIDCNetPrototype = () => {
       <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg p-6 text-white">
         <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <Lock className="w-6 h-6" />
-          Quantum-Resistant Cryptography
+          Cryptography Concepts (Not Implemented)
         </h3>
+        <p className="text-sm opacity-90 mt-4">Conceptual UI only: no cryptographic operations, key management, or protocol negotiation occur in this prototype.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h4 className="font-semibold mb-2">Key Encapsulation</h4>
@@ -282,25 +284,25 @@ const AIDCNetPrototype = () => {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm">Encryption Level:</span>
-              <span className="text-sm font-semibold text-green-600">256-bit PQ</span>
+              <span className="text-sm font-semibold text-green-600">Not implemented</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm">Key Rotation:</span>
-              <span className="text-sm font-semibold text-green-600">Every 24h</span>
+              <span className="text-sm">Key Rotation (not implemented):</span>
+              <span className="text-sm font-semibold text-green-600">Not implemented</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm">Forward Secrecy:</span>
+              <span className="text-sm">Forward Secrecy (not implemented):</span>
               <span className="text-sm font-semibold text-green-600">Enabled</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm">Zero-Knowledge:</span>
+              <span className="text-sm">Zero-Knowledge (not implemented):</span>
               <span className="text-sm font-semibold text-green-600">Active</span>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg p-4 border">
-          <h4 className="font-semibold mb-3">Threat Mitigation</h4>
+          <h4 className="font-semibold mb-3">Threats to address (not mitigated by this prototype)</h4>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -336,13 +338,13 @@ const AIDCNetPrototype = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">AIDCNet</h1>
-                <p className="text-sm text-gray-600">AI-Powered Decentralized Quantum-Resistant Network</p>
+                <p className="text-sm text-gray-600">AI-Assisted Decentralized Network — UI Simulation</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm font-semibold text-green-600">Network Status: Online</p>
-                <p className="text-xs text-gray-500">Uptime: {networkStats.uptime}%</p>
+                <p className="text-sm font-semibold text-green-600">Demo simulation (not connected to a live network)</p>
+                <p className="text-xs text-gray-500">Uptime: not measured</p>
               </div>
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
             </div>
@@ -364,7 +366,7 @@ const AIDCNetPrototype = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">256-bit</div>
-              <div className="text-xs text-gray-600">Quantum Security</div>
+              <div className="text-xs text-gray-600">Security protocol: not implemented</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-indigo-600">{aiMetrics.routingEfficiency.toFixed(0)}%</div>
@@ -424,7 +426,7 @@ const AIDCNetPrototype = () => {
                 </div>
                 <div className="bg-purple-50 rounded-lg p-4">
                   <h4 className="font-semibold text-purple-900 mb-2">Network Reach</h4>
-                  <p className="text-2xl font-bold text-purple-600">Global</p>
+                  <p className="text-2xl font-bold text-purple-600">No live network</p>
                   <p className="text-sm text-purple-700">Worldwide coverage</p>
                 </div>
               </div>
@@ -439,7 +441,7 @@ const AIDCNetPrototype = () => {
               </h2>
               <AIMetricsPanel />
               <div className="bg-gray-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">AI Components Active</h3>
+                <h3 className="text-lg font-semibold mb-4">Illustrative AI concepts (not implemented)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-white rounded-lg p-4 flex items-center gap-3">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -488,7 +490,7 @@ const AIDCNetPrototype = () => {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <Shield className="w-6 h-6" />
-                Quantum-Resistant Security
+                Cryptography Concepts (Not Implemented)
               </h2>
               <CryptoPanel />
             </div>
