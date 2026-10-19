@@ -61,7 +61,7 @@ const AIDCNetPrototype = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Quantum crypto simulation
+  // Illustrative algorithm labels only; no cryptographic operations are performed.
   const generateQuantumKey = () => {
     const algorithms = ['CRYSTALS-Kyber-1024', 'CRYSTALS-Dilithium', 'SPHINCS+'];
     return algorithms[Math.floor(Math.random() * algorithms.length)];
@@ -243,7 +243,7 @@ const AIDCNetPrototype = () => {
               
               <div className="text-xs text-gray-600 mb-2">
                 <Lock className="w-3 h-3 inline mr-1" />
-                Encrypted with: {message.encryption}
+                Simulated algorithm label (no encryption performed): {message.encryption}
               </div>
               
               <div className="text-xs text-gray-500">
@@ -268,7 +268,7 @@ const AIDCNetPrototype = () => {
           <div>
             <h4 className="font-semibold mb-2">Key Encapsulation</h4>
             <p className="text-sm opacity-90">CRYSTALS-Kyber-1024</p>
-            <p className="text-xs opacity-75">256-bit quantum security</p>
+            <p className="text-xs opacity-75">Concept only; no quantum-safe cryptography is implemented</p>
           </div>
           <div>
             <h4 className="font-semibold mb-2">Digital Signatures</h4>
@@ -292,11 +292,11 @@ const AIDCNetPrototype = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Forward Secrecy (not implemented):</span>
-              <span className="text-sm font-semibold text-green-600">Enabled</span>
+              <span className="text-sm font-semibold text-gray-600">Not implemented</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Zero-Knowledge (not implemented):</span>
-              <span className="text-sm font-semibold text-green-600">Active</span>
+              <span className="text-sm font-semibold text-gray-600">Not implemented</span>
             </div>
           </div>
         </div>
@@ -365,7 +365,7 @@ const AIDCNetPrototype = () => {
               <div className="text-xs text-gray-600">Messages Routed</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">256-bit</div>
+              <div className="text-2xl font-bold text-purple-600">N/A</div>
               <div className="text-xs text-gray-600">Security protocol: not implemented</div>
             </div>
             <div className="text-center">
