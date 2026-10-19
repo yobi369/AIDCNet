@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { clampMetric } from './src/lib/demoMetrics';
+import MeshLab from './src/components/MeshLab';
 import { Network, Shield, Brain, MessageCircle, Users, Activity, Zap, Lock, Globe, Server, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const AIDCNetPrototype = () => {
@@ -388,6 +389,7 @@ const AIDCNetPrototype = () => {
         <div className="flex space-x-1 bg-gray-200 rounded-lg p-1 mb-6">
           {[
             { id: 'network', label: 'Network', icon: Globe },
+            { id: 'mesh', label: 'Mesh Lab', icon: Network },
             { id: 'ai', label: 'AI Intelligence', icon: Brain },
             { id: 'messages', label: 'Messages', icon: MessageCircle },
             { id: 'crypto', label: 'Cryptography', icon: Shield }
@@ -437,6 +439,16 @@ const AIDCNetPrototype = () => {
                   <p className="text-sm text-purple-700">Worldwide coverage</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'mesh' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Network className="w-6 h-6" />
+                Deterministic Mesh Experiments
+              </h2>
+              <MeshLab />
             </div>
           )}
 
