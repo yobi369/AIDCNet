@@ -8,7 +8,7 @@
 - One TCP or TLS connection carries one request envelope and one response envelope.
 - Each envelope is UTF-8 JSON preceded by a four-byte unsigned big-endian byte length.
 - The current maximum body size is 65,536 bytes. Empty and oversized request frames are rejected.
-- Socket inactivity timeout defaults to 5 seconds.
+- Socket inactivity timeout defaults to 5 seconds. The default maximum active connections is 128 per peer; configure `maxConnections` between 1 and 4,096 for the deployment. This is a coarse connection cap, not a complete denial-of-service defense.
 - TLS 1.2 or newer with mutual certificate verification is required by default. A caller must explicitly set `allowInsecure: true` to enable plaintext for controlled tests.
 - A successful response contains `ok: true` and the request `id`; a rejected request contains `ok: false` and an error string. Error text is diagnostic and must not be treated as a stable machine-readable code.
 
