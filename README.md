@@ -34,7 +34,7 @@ The build and tests validate the front-end scaffold and its small utility layer;
 
 ## Architecture today
 
-- `packages/mesh-node/` — experimental Node.js TCP peer transport with HMAC-SHA-256 message authentication, bounded frames, timestamp freshness checks, and in-memory replay rejection. It is not encrypted and must not be exposed to the public internet; see its package README for limitations.
+- `packages/mesh-node/` — experimental Node.js TCP peer transport with HMAC-SHA-256 message authentication, bounded frames, timestamp freshness checks, in-memory replay rejection, and optional mutual TLS (mTLS). Without TLS configuration, traffic is not encrypted; see the package README for setup and limitations.
 
 - `aidcnet_prototype.tsx` — single-file dashboard prototype with network, AI metrics, message-routing, and cryptography panels.
 - `src/lib/demoMetrics.ts` — bounded metric helper used by the simulated dashboard.
