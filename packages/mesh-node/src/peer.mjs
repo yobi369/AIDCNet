@@ -33,10 +33,12 @@ function isPlainObject(value) { return value !== null && typeof value === "objec
  * substitute for a reviewed SAN-based identity and certificate lifecycle.
  */
 export class MeshPeer {
-  constructor({ id, host = "127.0.0.1", maxClockSkewMs = MAX_CLOCK_SKEW_MS, socketTimeoutMs = DEFAULT_SOCKET_TIMEOUT_MS, tlsOptions = null, allowInsecure = false } = {}) {
+  constructor({ id, host = "127.0.0.1", maxClockSkewMs = MAX_CLOCK_SKEW_MS, socketTimeoutMs = DEFAULT_SOCKET_TIMEOUT_MS, maxConnections = 128, tlsOptions = null, allowInsecure = false } = {}) {
     if (typeof id !== "string" || !/^[a-zA-Z0-9._-]{1,64}$/.test(id)) throw new TypeError("Peer id must be 1-64 safe identifier characters");
-    this.id = id; this.host = host; this.maxClockSkewMs = maxClockSkewMs; this.socketTimeoutMs = socketTimeoutMs;
-    this.peers = new Map(); this.replays = new Map(); this.server = null; this.address = null; this.emitMessage = null; this.tlsOptions = tlsOptions; this.allowInsecure = allowInsecure;
+    if (!Number.isInteger(maxConnections) || maxConnections < 1 || maxConnections > 4096) throw new RangeError("maxConnections must be an integer between 1 and 4096");
+    if (!Number.isInteger(socketTimeoutMs) || socketTimeoutMs < 1 || socketTimeoutMs > 300_000) throw new RangeError("socketTimeoutMs must be an integer between 1 and 300000");
+    this.id = id; this.host = host; this.maxClockSkewMs = maxClockSkewMs; this.socketTimeoutMs = socketTimeoutMs; this.maxConnections = maxConnections;
+    this.peers = new Map(); this.replays = new Map(); this.activeSockets = new Set(); this.server = null; this.address = null; this.emitMessage = null; this.tlsOptions = tlsOptions; this.allowInsecure = allowInsecure;
   }
 
   registerPeer(id, { host = "127.0.0.1", port, secret, tlsOptions: peerTlsOptions = null } = {}) {
@@ -59,6 +61,8 @@ export class MeshPeer {
         this.#handleSocket(socket, certificatePeerId);
       })
       : net.createServer((socket) => this.#handleSocket(socket));
+    // Enforce a server-level cap during connection acceptance, including TLS handshakes.
+    server.maxConnections = this.maxConnections;
     this.server = server;
     await new Promise((resolve, reject) => {
       const onError = (error) => { server.off("listening", onListening); reject(error); };
@@ -73,6 +77,9 @@ export class MeshPeer {
   async close() {
     if (!this.server) return;
     const server = this.server; this.server = null; this.address = null;
+    // Do not let idle/partial clients hold shutdown open indefinitely.
+    for (const socket of this.activeSockets) socket.destroy();
+    this.activeSockets.clear();
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 
@@ -123,6 +130,9 @@ export class MeshPeer {
   }
 
   #handleSocket(socket, certificatePeerId = null) {
+    if (this.activeSockets.size >= this.maxConnections) return socket.destroy();
+    this.activeSockets.add(socket);
+    socket.once("close", () => this.activeSockets.delete(socket));
     socket.setTimeout(this.socketTimeoutMs, () => socket.destroy()); let buffer = Buffer.alloc(0); let handled = false;
     socket.on("data", (chunk) => {
       if (handled) return socket.destroy(); buffer = Buffer.concat([buffer, chunk]);
