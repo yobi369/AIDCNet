@@ -27,9 +27,10 @@ function sendFrame(socket, value) { socket.write(encodeFrame(value)); }
 function isPlainObject(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
 
 /**
- * Experimental authenticated TCP peer.
- * HMAC-SHA-256 authenticates messages but does not encrypt traffic. Use only on
- * localhost or a trusted isolated network until a reviewed TLS/mTLS profile exists.
+ * Experimental authenticated TCP peer. In TLS mode, the certificate DNS name
+ * is checked against the destination peer ID and the client certificate CN is
+ * bound to the envelope sender ID. This is an interim identity profile, not a
+ * substitute for a reviewed SAN-based identity and certificate lifecycle.
  */
 export class MeshPeer {
   constructor({ id, host = "127.0.0.1", maxClockSkewMs = MAX_CLOCK_SKEW_MS, socketTimeoutMs = DEFAULT_SOCKET_TIMEOUT_MS, tlsOptions = null, allowInsecure = false } = {}) {
@@ -52,7 +53,10 @@ export class MeshPeer {
     const server = this.tlsOptions
       ? tls.createServer({ ...this.tlsOptions, requestCert: true, rejectUnauthorized: true, minVersion: "TLSv1.2" }, (socket) => {
         if (!socket.authorized) return socket.destroy();
-        this.#handleSocket(socket);
+        const peerCertificate = socket.getPeerCertificate();
+        const certificatePeerId = peerCertificate?.subject?.CN;
+        if (typeof certificatePeerId !== "string" || !/^[a-zA-Z0-9._-]{1,64}$/.test(certificatePeerId)) return socket.destroy();
+        this.#handleSocket(socket, certificatePeerId);
       })
       : net.createServer((socket) => this.#handleSocket(socket));
     this.server = server;
@@ -81,7 +85,7 @@ export class MeshPeer {
     return await new Promise((resolve, reject) => {
       const connectionOptions = { host: target.host, port: target.port };
       const socket = this.tlsOptions
-        ? tls.connect({ ...this.tlsOptions, ...(target.tlsOptions ?? {}), ...connectionOptions, rejectUnauthorized: true, minVersion: "TLSv1.2" })
+        ? tls.connect({ ...this.tlsOptions, ...(target.tlsOptions ?? {}), ...connectionOptions, servername: target.id, rejectUnauthorized: true, minVersion: "TLSv1.2" })
         : net.createConnection(connectionOptions);
       let buffer = Buffer.alloc(0); let settled = false;
       const finish = (error, result) => { if (settled) return; settled = true; socket.destroy(); if (error) reject(error); else resolve(result); };
@@ -100,9 +104,10 @@ export class MeshPeer {
     });
   }
 
-  #acceptEnvelope(envelope) {
+  #acceptEnvelope(envelope, certificatePeerId = null) {
     if (!isPlainObject(envelope) || envelope.version !== PROTOCOL_VERSION || typeof envelope.id !== "string" || typeof envelope.from !== "string" || envelope.to !== this.id || typeof envelope.timestamp !== "number" || typeof envelope.nonce !== "string" || !/^[a-f0-9]{32}$/.test(envelope.nonce) || !isPlainObject(envelope.payload)) throw new Error("Malformed or unsupported envelope");
     const peer = this.peers.get(envelope.from); if (!peer) throw new Error("Unauthorised sender");
+    if (certificatePeerId !== null && certificatePeerId !== envelope.from) throw new Error("TLS certificate identity does not match envelope sender");
     if (Math.abs(Date.now() - envelope.timestamp) > this.maxClockSkewMs) throw new Error("Message timestamp outside allowed window");
     if (!safeEqualHex(envelope.signature, sign(peer.secret, envelope))) throw new Error("Message authentication failed");
     const now = Date.now();
@@ -117,7 +122,7 @@ export class MeshPeer {
     return { id: envelope.id, from: envelope.from, to: envelope.to, payload: envelope.payload };
   }
 
-  #handleSocket(socket) {
+  #handleSocket(socket, certificatePeerId = null) {
     socket.setTimeout(this.socketTimeoutMs, () => socket.destroy()); let buffer = Buffer.alloc(0); let handled = false;
     socket.on("data", (chunk) => {
       if (handled) return socket.destroy(); buffer = Buffer.concat([buffer, chunk]);
@@ -126,7 +131,7 @@ export class MeshPeer {
       const length = buffer.readUInt32BE(0); if (length === 0 || length > MAX_FRAME_BYTES) return this.#replyError(socket, "Invalid frame length");
       if (buffer.length < length + 4) return; if (buffer.length !== length + 4) return this.#replyError(socket, "Unexpected trailing data");
       handled = true;
-      try { const envelope = JSON.parse(buffer.subarray(4).toString("utf8")); const message = this.#acceptEnvelope(envelope);
+      try { const envelope = JSON.parse(buffer.subarray(4).toString("utf8")); const message = this.#acceptEnvelope(envelope, certificatePeerId);
         if (typeof this.emitMessage === "function") this.emitMessage(message);
         sendFrame(socket, { ok: true, id: message.id, receivedAt: Date.now() });
       } catch (error) { this.#replyError(socket, error instanceof Error ? error.message : "Invalid message"); }
