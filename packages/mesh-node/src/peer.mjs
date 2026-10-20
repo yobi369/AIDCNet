@@ -48,7 +48,10 @@ export class MeshPeer {
 
   async listen({ port = 0, host = this.host } = {}) {
     if (this.server) throw new Error("Peer is already listening");
-    const server = this.tlsOptions\n      ? tls.createServer({ ...this.tlsOptions, requestCert: true, rejectUnauthorized: true, minVersion: "TLSv1.2" }, (socket) => this.#handleSocket(socket))\n      : net.createServer((socket) => this.#handleSocket(socket));\n    this.server = server;
+    const server = this.tlsOptions
+      ? tls.createServer({ ...this.tlsOptions, requestCert: true, rejectUnauthorized: true, minVersion: "TLSv1.2" }, (socket) => this.#handleSocket(socket))
+      : net.createServer((socket) => this.#handleSocket(socket));
+    this.server = server;
     await new Promise((resolve, reject) => {
       const onError = (error) => { server.off("listening", onListening); reject(error); };
       const onListening = () => { server.off("error", onError); resolve(); };
@@ -71,7 +74,11 @@ export class MeshPeer {
     const unsigned = { version: PROTOCOL_VERSION, id: randomUUID(), from: this.id, to, timestamp: Date.now(), nonce: randomBytes(16).toString("hex"), payload };
     const envelope = { ...unsigned, signature: sign(target.secret, unsigned) }; const frame = encodeFrame(envelope);
     return await new Promise((resolve, reject) => {
-      const connectionOptions = { host: target.host, port: target.port };\n      const socket = this.tlsOptions\n        ? tls.connect({ ...this.tlsOptions, ...(target.tlsOptions ?? {}), ...connectionOptions, rejectUnauthorized: true, minVersion: "TLSv1.2" })\n        : net.createConnection(connectionOptions);\n      let buffer = Buffer.alloc(0); let settled = false;
+      const connectionOptions = { host: target.host, port: target.port };
+      const socket = this.tlsOptions
+        ? tls.connect({ ...this.tlsOptions, ...(target.tlsOptions ?? {}), ...connectionOptions, rejectUnauthorized: true, minVersion: "TLSv1.2" })
+        : net.createConnection(connectionOptions);
+      let buffer = Buffer.alloc(0); let settled = false;
       const finish = (error, result) => { if (settled) return; settled = true; socket.destroy(); if (error) reject(error); else resolve(result); };
       socket.setTimeout(this.socketTimeoutMs, () => finish(new Error("Peer connection timed out")));
       socket.once("error", (error) => finish(error));
