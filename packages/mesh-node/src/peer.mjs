@@ -1,4 +1,5 @@
 import net from "node:net";
+import tls from "node:tls";
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 const PROTOCOL_VERSION = 1;
@@ -31,23 +32,23 @@ function isPlainObject(value) { return value !== null && typeof value === "objec
  * localhost or a trusted isolated network until a reviewed TLS/mTLS profile exists.
  */
 export class MeshPeer {
-  constructor({ id, host = "127.0.0.1", maxClockSkewMs = MAX_CLOCK_SKEW_MS, socketTimeoutMs = DEFAULT_SOCKET_TIMEOUT_MS } = {}) {
+  constructor({ id, host = "127.0.0.1", maxClockSkewMs = MAX_CLOCK_SKEW_MS, socketTimeoutMs = DEFAULT_SOCKET_TIMEOUT_MS, tlsOptions = null } = {}) {
     if (typeof id !== "string" || !/^[a-zA-Z0-9._-]{1,64}$/.test(id)) throw new TypeError("Peer id must be 1-64 safe identifier characters");
     this.id = id; this.host = host; this.maxClockSkewMs = maxClockSkewMs; this.socketTimeoutMs = socketTimeoutMs;
-    this.peers = new Map(); this.replays = new Map(); this.server = null; this.address = null; this.emitMessage = null;
+    this.peers = new Map(); this.replays = new Map(); this.server = null; this.address = null; this.emitMessage = null; this.tlsOptions = tlsOptions;
   }
 
-  registerPeer(id, { host = "127.0.0.1", port, secret } = {}) {
+  registerPeer(id, { host = "127.0.0.1", port, secret, tlsOptions: peerTlsOptions = null } = {}) {
     if (id === this.id) throw new TypeError("A peer cannot register itself");
     if (typeof id !== "string" || !/^[a-zA-Z0-9._-]{1,64}$/.test(id)) throw new TypeError("Invalid peer id");
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new TypeError("Peer port must be between 1 and 65535");
     if (typeof secret !== "string" || Buffer.byteLength(secret, "utf8") < 32) throw new TypeError("Peer secret must contain at least 32 UTF-8 bytes");
-    this.peers.set(id, { id, host, port, secret });
+    this.peers.set(id, { id, host, port, secret, tlsOptions: peerTlsOptions });
   }
 
   async listen({ port = 0, host = this.host } = {}) {
     if (this.server) throw new Error("Peer is already listening");
-    const server = net.createServer((socket) => this.#handleSocket(socket)); this.server = server;
+    const server = this.tlsOptions\n      ? tls.createServer({ ...this.tlsOptions, requestCert: true, rejectUnauthorized: true, minVersion: "TLSv1.2" }, (socket) => this.#handleSocket(socket))\n      : net.createServer((socket) => this.#handleSocket(socket));\n    this.server = server;
     await new Promise((resolve, reject) => {
       const onError = (error) => { server.off("listening", onListening); reject(error); };
       const onListening = () => { server.off("error", onError); resolve(); };
@@ -70,7 +71,7 @@ export class MeshPeer {
     const unsigned = { version: PROTOCOL_VERSION, id: randomUUID(), from: this.id, to, timestamp: Date.now(), nonce: randomBytes(16).toString("hex"), payload };
     const envelope = { ...unsigned, signature: sign(target.secret, unsigned) }; const frame = encodeFrame(envelope);
     return await new Promise((resolve, reject) => {
-      const socket = net.createConnection({ host: target.host, port: target.port }); let buffer = Buffer.alloc(0); let settled = false;
+      const connectionOptions = { host: target.host, port: target.port };\n      const socket = this.tlsOptions\n        ? tls.connect({ ...this.tlsOptions, ...(target.tlsOptions ?? {}), ...connectionOptions, rejectUnauthorized: true, minVersion: "TLSv1.2" })\n        : net.createConnection(connectionOptions);\n      let buffer = Buffer.alloc(0); let settled = false;
       const finish = (error, result) => { if (settled) return; settled = true; socket.destroy(); if (error) reject(error); else resolve(result); };
       socket.setTimeout(this.socketTimeoutMs, () => finish(new Error("Peer connection timed out")));
       socket.once("error", (error) => finish(error));
@@ -83,7 +84,7 @@ export class MeshPeer {
           finish(null, response);
         } catch { finish(new Error("Invalid peer response")); }
       });
-      socket.once("connect", () => socket.write(frame));
+      socket.once(this.tlsOptions ? "secureConnect" : "connect", () => socket.write(frame));
     });
   }
 
