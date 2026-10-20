@@ -1,10 +1,62 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import net from "node:net";
+import tls from "node:tls";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { MeshPeer } from "../src/peer.mjs";
 
 const sharedSecret = "local-development-secret-at-least-32-bytes";
+function makeTlsMaterial() {
+  const dir = mkdtempSync(join(tmpdir(), "aidcnet-mtls-"));
+  const run = (args) => execFileSync("openssl", args, { cwd: dir, stdio: "ignore" });
+  run(["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", "ca-key.pem", "-out", "ca.pem", "-days", "2", "-subj", "/CN=AIDCNet Test CA"]);
+  const peers = {};
+  for (const id of ["alice", "bob"]) {
+    run(["req", "-newkey", "rsa:2048", "-nodes", "-keyout", id + "-key.pem", "-out", id + ".csr", "-subj", "/CN=" + id]);
+    writeFileSync(join(dir, id + ".ext"), "subjectAltName=IP:127.0.0.1,DNS:localhost\nextendedKeyUsage=serverAuth,clientAuth\nkeyUsage=digitalSignature,keyEncipherment\n");
+    run(["x509", "-req", "-in", id + ".csr", "-CA", "ca.pem", "-CAkey", "ca-key.pem", "-CAcreateserial", "-out", id + "-cert.pem", "-days", "2", "-extfile", id + ".ext"]);
+    peers[id] = { cert: readFileSync(join(dir, id + "-cert.pem")), key: readFileSync(join(dir, id + "-key.pem")) };
+  }
+  const ca = readFileSync(join(dir, "ca.pem"));
+  return { dir, ca, peers, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+async function securePair(material) {
+  const alice = new MeshPeer({ id: "alice", tlsOptions: { ...material.peers.alice, ca: material.ca } });
+  const bob = new MeshPeer({ id: "bob", tlsOptions: { ...material.peers.bob, ca: material.ca } });
+  const aliceAddress = await alice.listen(); const bobAddress = await bob.listen();
+  alice.registerPeer("bob", { ...bobAddress, secret: sharedSecret });
+  bob.registerPeer("alice", { ...aliceAddress, secret: sharedSecret });
+  return { alice, bob, async close() { await Promise.all([alice.close(), bob.close()]); } };
+}
+
+test("mutual TLS encrypts transport and peers still authenticate envelopes", async (t) => {
+  const material = makeTlsMaterial(); t.after(() => material.cleanup());
+  const peers = await securePair(material); t.after(() => peers.close());
+  const received = new Promise((resolve) => { peers.bob.emitMessage = resolve; });
+  const ack = await peers.alice.send("bob", { kind: "confidential-test", sequence: 1 });
+  assert.equal(ack.ok, true);
+  assert.deepEqual(await received.then((message) => message.payload), { kind: "confidential-test", sequence: 1 });
+});
+
+test("mutual TLS listener rejects clients without a trusted certificate", async (t) => {
+  const material = makeTlsMaterial(); t.after(() => material.cleanup());
+  const peers = await securePair(material); t.after(() => peers.close());
+  await assert.rejects(new Promise((resolve, reject) => {
+    const socket = tls.connect({ host: peers.bob.address.host, port: peers.bob.address.port, ca: material.ca, rejectUnauthorized: true, minVersion: "TLSv1.2" });
+    let received = false;
+    socket.setTimeout(1500, () => { socket.destroy(); reject(new Error("No application response from TLS peer")); });
+    socket.once("secureConnect", () => { const header = Buffer.alloc(4); header.writeUInt32BE(0, 0); socket.write(header); });
+    socket.on("data", () => { received = true; resolve(); });
+    socket.once("close", () => { if (!received) reject(new Error("TLS peer closed unauthenticated client connection")); });
+    socket.once("error", reject);
+  }), /closed unauthenticated|TLS|certificate|socket|alert|application response/i);
+});
+
 async function pair() {
   const alice = new MeshPeer({ id: "alice" }); const bob = new MeshPeer({ id: "bob" });
   const aliceAddress = await alice.listen(); const bobAddress = await bob.listen();
