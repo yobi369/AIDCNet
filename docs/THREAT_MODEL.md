@@ -33,7 +33,7 @@ The current transport is a Node.js process that accepts one length-prefixed JSON
 | Message alteration | TLS integrity plus HMAC envelope authentication | Shared-secret custody and rotation are external responsibilities |
 | Replay within one process | Timestamp freshness and per-sender nonce cache | Replay cache resets after restart and is not shared across replicas |
 | Oversized frame | 64 KiB frame limit | Many concurrent connections and repeated partial frames can still consume resources |
-| Slow/incomplete client | Socket timeout | Timeout tuning and aggregate connection limits need load testing |
+| Slow/incomplete client | Socket timeout plus configurable connection cap (128 by default) | Limits need workload-specific tuning and adversarial load testing; TLS handshake and process-level resource budgets still need review |
 | Unknown sender | Explicit registered-peer allowlist | No automated provisioning, revocation, or membership consensus |
 | Secret leakage | No secrets should be committed; caller supplies secrets | No built-in secret store, key rotation, audit trail, or secret-redaction layer |
 | Malicious application payload | JSON-object validation | No schema, per-message authorization, sandbox, or application policy is provided |
@@ -54,7 +54,7 @@ The current transport is a Node.js process that accepts one length-prefixed JSON
 - Managed secret distribution and rotation.
 - Durable replay/idempotency state across restarts and replicas.
 - Durable delivery, acknowledgements beyond transport acceptance, retries, deduplication, ordering, backpressure, and congestion control.
-- Connection quotas, global resource budgets, structured security audit events, and load-tested denial-of-service controls.
+- Global CPU/memory budgets, rate limits, structured security audit events, and load-tested denial-of-service controls.
 - Peer discovery, authenticated membership changes, consensus, and split-brain handling.
 - End-to-end application authorization, payload schemas, and safe execution policy.
 - Independent review, deployment hardening, and real-world operational evidence.
