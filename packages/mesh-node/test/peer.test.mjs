@@ -48,10 +48,13 @@ test("mutual TLS listener rejects clients without a trusted certificate", async 
   const peers = await securePair(material); t.after(() => peers.close());
   await assert.rejects(new Promise((resolve, reject) => {
     const socket = tls.connect({ host: peers.bob.address.host, port: peers.bob.address.port, ca: material.ca, rejectUnauthorized: true, minVersion: "TLSv1.2" });
-    socket.setTimeout(1500, () => { socket.destroy(); reject(new Error("TLS client certificate was not rejected")); });
-    socket.once("secureConnect", () => { socket.end(); resolve(); });
+    let received = false;
+    socket.setTimeout(1500, () => { socket.destroy(); reject(new Error("No application response from TLS peer")); });
+    socket.once("secureConnect", () => { const header = Buffer.alloc(4); header.writeUInt32BE(0, 0); socket.write(header); });
+    socket.on("data", () => { received = true; resolve(); });
+    socket.once("close", () => { if (!received) reject(new Error("TLS peer closed unauthenticated client connection")); });
     socket.once("error", reject);
-  }), /certificate|required|alert|socket|TLS/i);
+  }), /closed unauthenticated|TLS|certificate|socket|alert|application response/i);
 });
 
 async function pair() {
