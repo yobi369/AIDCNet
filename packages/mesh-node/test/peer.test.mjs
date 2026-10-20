@@ -17,10 +17,7 @@ function makeTlsMaterial() {
   const peers = {};
   for (const id of ["alice", "bob"]) {
     run(["req", "-newkey", "rsa:2048", "-nodes", "-keyout", id + "-key.pem", "-out", id + ".csr", "-subj", "/CN=" + id]);
-    writeFileSync(join(dir, id + ".ext"), "subjectAltName=IP:127.0.0.1,DNS:localhost
-extendedKeyUsage=serverAuth,clientAuth
-keyUsage=digitalSignature,keyEncipherment
-");
+    writeFileSync(join(dir, id + ".ext"), ["subjectAltName=IP:127.0.0.1,DNS:localhost", "extendedKeyUsage=serverAuth,clientAuth", "keyUsage=digitalSignature,keyEncipherment", ""].join(String.fromCharCode(10)));
     run(["x509", "-req", "-in", id + ".csr", "-CA", "ca.pem", "-CAkey", "ca-key.pem", "-CAcreateserial", "-out", id + "-cert.pem", "-days", "2", "-extfile", id + ".ext"]);
     peers[id] = { cert: readFileSync(join(dir, id + "-cert.pem")), key: readFileSync(join(dir, id + "-key.pem")) };
   }
