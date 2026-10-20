@@ -4,7 +4,7 @@
 
 The goal is to evolve this into a useful, measurable, independently reviewable distributed-systems platform—not to present mock metrics as a finished network.
 
-> **Status:** research prototype, not production-ready. The peer package opens real sockets and has automated integration tests, but peer discovery, durable delivery, multi-node coordination/consensus, AI inference integration, production identity provisioning, and independent security review are not complete. Do not expose experimental nodes to the public internet or use them to protect sensitive workloads.
+> **Status:** research prototype, not production-ready. The peer package opens real sockets and has automated integration tests, including experimental static multi-hop forwarding, but peer discovery, durable delivery, multi-node coordination/consensus, AI inference integration, production identity provisioning, and independent security review are not complete. Do not expose experimental nodes to the public internet or use them to protect sensitive workloads.
 
 ## What actually works today
 
@@ -38,7 +38,8 @@ The dashboard opens at the Vite URL printed in the terminal.
 - `src/core/meshEngine.ts` — deterministic in-memory graph routing and reachability calculations.
 - `src/components/MeshLab.tsx` — interactive topology experiment backed by the graph engine.
 - `packages/mesh-node/src/peer.mjs` — experimental TCP/TLS peer transport.
-- `packages/mesh-node/test/` — socket-level tests for message delivery, authentication, replay rejection, malformed frames, and mTLS behavior.
+- `packages/mesh-node/src/router.mjs` — static multi-hop forwarding with hop limits, loop prevention, and bounded in-memory duplicate detection.
+- `packages/mesh-node/test/` — socket-level tests for message delivery, authentication, replay rejection, malformed frames, mTLS behavior, and multi-hop forwarding.
 - `packages/mesh-node/README.md` — peer transport API and setup notes.
 - `docs/THREAT_MODEL.md` — assets, trust boundaries, threats, mitigations, and residual risks.
 - `docs/PROTOCOL.md` — current wire-envelope and transport behavior.

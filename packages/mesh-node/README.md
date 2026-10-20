@@ -1,6 +1,6 @@
 # AIDCNet Experimental Mesh Node
 
-This package provides a **real direct-peer TCP/TLS transport** for local multi-process experiments. It is separate from the browser graph simulation and does not currently forward messages over multi-hop routes.
+This package provides a **real TCP/TLS peer transport** and an experimental static-route overlay for local multi-process experiments. It is separate from the browser graph simulation.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ Plaintext mode requires explicit `allowInsecure: true`; use it only for isolated
 
 ## Important limitations
 
-This is a research milestone and has not undergone an independent security audit. The implementation does not provide automated certificate issuance/rotation/revocation, secure key distribution, durable replay protection, persistent delivery, retry/deduplication semantics, backpressure, connection-flood controls, peer discovery, membership consensus, multi-hop forwarding, or application-level authorization. The replay cache is process-local and resets on restart. A transport acknowledgement means envelope acceptance, not durable business completion. Do not expose it to the public internet or use it for sensitive production workloads.
+This is a research milestone and has not undergone an independent security audit. The implementation does not provide automated certificate issuance/rotation/revocation, secure key distribution, durable replay protection, persistent delivery, retry/deduplication semantics, backpressure, connection-flood controls, peer discovery, membership consensus, production-grade multi-hop routing, or application-level authorization. The replay cache is process-local and resets on restart. A transport acknowledgement means envelope acceptance, not durable business completion. Do not expose it to the public internet or use it for sensitive production workloads.
 
 See [the threat model](../../docs/THREAT_MODEL.md), [protocol notes](../../docs/PROTOCOL.md), and [validation plan](../../docs/VALIDATION_PLAN.md).
 
@@ -63,3 +63,24 @@ try {
 ```
 
 Use certificate DNS SANs matching configured destination peer IDs and client certificate CNs matching the sending peer IDs for the current experimental identity profile. Verify the deployment-specific certificate policy and key handling before any use beyond a local lab.
+
+
+## Experimental multi-hop router
+
+The opt-in `MeshRouter` is available from `src/router.mjs`. It forwards over manually provisioned direct `MeshPeer` links and includes a hop limit, visited-peer loop checks, and bounded expiring in-memory duplicate tracking.
+
+```js
+import { MeshRouter } from "./src/router.mjs";
+
+const router = new MeshRouter({
+  peer,
+  routes: { "node-c": "node-b" },
+  maxHops: 8,
+  onDeliver: (message) => console.log(message),
+  onError: (error) => console.error(error),
+}).start();
+```
+
+Register the next-hop peer (here, `node-b`) on the underlying transport before sending. Configure each forwarding peer's own route to the final destination. Call `router.stop()` when shutting down the routing overlay.
+
+The sender's `send()` result confirms acceptance by the first hop only; it is not proof of final delivery. Route metadata is not end-to-end signed, routes are static, and deduplication resets on process restart. See [multi-hop routing notes](../../docs/multi-hop-routing.md). This feature is experimental and not production-ready.
