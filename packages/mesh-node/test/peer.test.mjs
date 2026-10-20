@@ -180,3 +180,26 @@ test("rejects a trusted TLS certificate whose peer identity disagrees with envel
     await imposter.close();
   }
 });
+
+
+test("enforces a bounded number of active peer connections", async (t) => {
+  const peer = new MeshPeer({ id: "connection-limited", allowInsecure: true, maxConnections: 1 });
+  const address = await peer.listen({ host: "127.0.0.1", port: 0 });
+  t.after(() => peer.close());
+  const first = net.createConnection(address);
+  await new Promise((resolve, reject) => { first.once("connect", resolve); first.once("error", reject); });
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  const second = net.createConnection(address);
+  const secondClosed = await Promise.race([
+    new Promise((resolve) => second.once("close", () => resolve(true))),
+    new Promise((resolve) => setTimeout(() => resolve(false), 500)),
+  ]);
+  first.destroy();
+  second.destroy();
+  assert.equal(secondClosed, true, "the server should close connections above its configured cap");
+});
+
+test("validates resource-budget constructor options", () => {
+  assert.throws(() => new MeshPeer({ id: "bad-limit", maxConnections: 0 }), /maxConnections/);
+  assert.throws(() => new MeshPeer({ id: "bad-timeout", socketTimeoutMs: 0 }), /socketTimeoutMs/);
+});
