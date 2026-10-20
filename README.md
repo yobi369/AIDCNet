@@ -1,57 +1,102 @@
 # AIDCNet
 
-AIDCNet is an early **front-end prototype** exploring the concept of an AI-assisted decentralized network. The current repository contains a React/TypeScript dashboard prototype and a technical specification PDF.
+**AIDCNet is an experimental, AI-oriented decentralized-network research project** with two deliberately separate parts: a browser-based routing lab for repeatable topology experiments, and a Node.js peer-transport package for real local TCP/TLS message exchange.
 
-> **Important scope note:** this repository does not currently implement a live peer-to-peer network, AI inference or training, message transport, consensus, or production cryptography. Node activity, routing, delivery, and performance metrics in the dashboard are simulated. Security labels in the prototype are conceptual UI, not evidence of implemented controls. Do not use it to protect real data or make security decisions.
+The goal is to evolve this into a useful, measurable, independently reviewable distributed-systems platform—not to present mock metrics as a finished network.
 
-## Current status
+> **Status:** research prototype, not production-ready. The peer package opens real sockets and has automated integration tests, but peer discovery, durable delivery, multi-node coordination/consensus, AI inference integration, production identity provisioning, and independent security review are not complete. Do not expose experimental nodes to the public internet or use them to protect sensitive workloads.
 
-- **Stage:** UI concept / simulation prototype
-- **Runtime:** React + TypeScript + Vite
-- **Automated checks:** CI build and unit tests
-- **Production status:** not production-ready; no live network service or security protocol is implemented
+## What actually works today
 
-## Run locally
+- **Deterministic mesh lab:** calculates shortest paths and reachability over an in-memory graph. The graph is local application state, not a remote network.
+- **Experimental peer transport:** Node.js TCP framing and JSON message envelopes, per-peer HMAC-SHA-256 authentication, allowlisted senders, timestamp freshness checks, bounded frames, socket timeouts, and an in-memory nonce replay cache.
+- **Encrypted peer channel when correctly configured:** TLS 1.2+ mutual TLS (mTLS) is required by default. The client and server must be provisioned with certificates and a trusted CA. HMAC envelope authentication remains a separate application-layer check.
+- **Explicit local-only escape hatch:** plaintext transport requires `allowInsecure: true`. It is for isolated local tests only—not production or untrusted networks.
+- **Automated verification:** typecheck, front-end unit tests, real socket integration tests, mTLS certificate tests, and production frontend build run in GitHub Actions.
 
-Requirements: Node.js 20 or newer and npm.
+## Quick start
+
+Requirements: Node.js 20+, npm, and OpenSSL for the mTLS integration-test fixtures.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite.
-
-## Quality checks
+Run the verification suite:
 
 ```bash
-npm test
-npm run build
-npm run typecheck
+npm run check
+node --test packages/mesh-node/test/*.test.mjs
 ```
 
-The build and tests validate the front-end scaffold and its small utility layer; they do **not** validate a distributed network, cryptographic implementation, AI model, or production deployment.
+The dashboard opens at the Vite URL printed in the terminal.
 
-## Architecture today
+## Repository map
 
-- `packages/mesh-node/` — experimental Node.js TCP peer transport with HMAC-SHA-256 message authentication, bounded frames, timestamp freshness checks, in-memory replay rejection, and mutual TLS (mTLS) by default; plaintext mode requires an explicit insecure opt-in and is intended only for controlled local tests. See the package README for setup and limitations.
+- `aidcnet_prototype.tsx` — React dashboard prototype; several network and AI panels remain simulated.
+- `src/core/meshEngine.ts` — deterministic in-memory graph routing and reachability calculations.
+- `src/components/MeshLab.tsx` — interactive topology experiment backed by the graph engine.
+- `packages/mesh-node/src/peer.mjs` — experimental TCP/TLS peer transport.
+- `packages/mesh-node/test/` — socket-level tests for message delivery, authentication, replay rejection, malformed frames, and mTLS behavior.
+- `packages/mesh-node/README.md` — peer transport API and setup notes.
+- `docs/THREAT_MODEL.md` — assets, trust boundaries, threats, mitigations, and residual risks.
+- `docs/PROTOCOL.md` — current wire-envelope and transport behavior.
+- `docs/VALIDATION_PLAN.md` — measurable exit criteria for moving beyond research use.
+- `SECURITY.md` — vulnerability-reporting guidance and security-claim policy.
 
-- `aidcnet_prototype.tsx` — single-file dashboard prototype with network, AI metrics, message-routing, and cryptography panels.
-- `src/lib/demoMetrics.ts` — bounded metric helper used by the simulated dashboard.
-- `AIDCNet_ Technical Specification & Implementation Guide.pdf` — project concept and implementation guide.
+## Configure a secure local peer pair
 
-## Known limitations and next engineering milestones
+Each peer needs a unique certificate/key pair issued by a CA trusted by the other peer. Keep private keys and HMAC secrets out of source control and provision them through a suitable secret-management process. The transport does not issue or rotate certificates or distribute secrets for you.
 
-1. Replace random UI state with explicit, typed demo fixtures and a documented data model.
-2. Separate UI components, domain logic, transport adapters, and configuration.
-3. Complete the threat model and protocol specification for the experimental TCP transport; add a reviewed TLS/mTLS deployment profile before use beyond trusted local experiments.
-4. Keep using maintained cryptographic primitives (the current transport uses Node.js crypto HMAC); do not implement primitives from scratch. Add reviewed TLS/mTLS and key provisioning before treating transport as secure.
-5. Implement authenticated peer identity, message integrity, replay protection, key lifecycle, and secure failure handling before claiming secure transport.
-6. Expand the new local TCP integration tests with replay/tamper, malformed-frame, disconnect, resource-exhaustion, and multi-process adversarial cases; add dependency scanning and reproducible locked builds.
-7. Publish measured performance and availability only when supported by instrumentation and repeatable tests.
+Illustrative setup:
 
-## Security and reporting
+```js
+import { readFileSync } from "node:fs";
+import { MeshPeer } from "./packages/mesh-node/src/peer.mjs";
 
-Please do not report simulated dashboard numbers as measured network performance or describe the current prototype as quantum-resistant, zero-knowledge, globally connected, or production-secure. Those capabilities require real implementations and independent verification.
+const tlsOptions = {
+  cert: readFileSync(process.env.AIDCNET_CERT_PATH),
+  key: readFileSync(process.env.AIDCNET_KEY_PATH),
+  ca: readFileSync(process.env.AIDCNET_CA_PATH),
+};
 
-For security concerns, contact the repository owner privately rather than publishing exploit details in an issue.
+const peer = new MeshPeer({ id: "node-a", tlsOptions });
+const address = await peer.listen({ host: "127.0.0.1", port: 0 });
+
+// Register only a known, provisioned destination.
+// Share its address and a unique >=32-byte HMAC secret out of band.
+peer.registerPeer("node-b", {
+  host: process.env.AIDCNET_PEER_B_HOST,
+  port: Number(process.env.AIDCNET_PEER_B_PORT),
+  secret: process.env.AIDCNET_PEER_B_SECRET,
+});
+
+try {
+  await peer.send("node-b", { kind: "health-check", at: Date.now() });
+} finally {
+  await peer.close();
+}
+```
+
+This snippet illustrates the API; it is not a complete deployment recipe. Verify certificate SANs, hostname expectations, secret permissions, network policy, and operational logging before use. Bind to loopback for local development. Do not use shared development secrets or the insecure override on public networks.
+
+## What the security controls do—and do not do
+
+| Control | Current behavior | Important limit |
+|---|---|---|
+| mTLS | Required by default when opening/sending; TLS 1.2+ and trusted client certificates | Correct CA/certificate provisioning, rotation, revocation, and operational key custody remain external |
+| HMAC-SHA-256 | Authenticates the defined JSON envelope with a per-peer secret | Shared-secret distribution and rotation are not implemented; this is not a digital-signature identity system |
+| Replay detection | Timestamp window plus nonce cache per sender | Cache is in memory and resets on restart; no durable exactly-once guarantee |
+| Frame limits/timeouts | Rejects oversized/invalid frames and times out inactive sockets | Not a complete defense against connection floods or all resource-exhaustion attacks |
+| Sender allowlist | Only registered peer IDs are accepted at the envelope layer | Provisioning is manual; there is no discovery or membership consensus |
+
+The complete boundaries and residual risks are in [the threat model](docs/THREAT_MODEL.md). The wire behavior is documented in [the protocol notes](docs/PROTOCOL.md).
+
+## Product direction
+
+AIDCNet should become a system whose claims are backed by observable evidence: independently launched peers, explicit identity lifecycle, durable bounded delivery, failure/recovery behavior, measured performance under published workloads, and a dashboard fed by real service events. See [the validation plan](docs/VALIDATION_PLAN.md) for gates. A green build proves the tested code passed those checks; it does not prove production readiness or security.
+
+## Contributing
+
+Keep changes small, testable, and documented. Never commit private keys, live credentials, customer data, or generated certificates. Do not add invented uptime, threat-detection, encryption-strength, or performance values to the dashboard. Every new security or performance claim must link to an implementation and reproducible test or measurement.
