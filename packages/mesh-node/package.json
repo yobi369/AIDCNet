@@ -1,0 +1,13 @@
+{
+  "name": "@aidcnet/mesh-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Experimental authenticated TCP transport for local AIDCNet peer experiments",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
