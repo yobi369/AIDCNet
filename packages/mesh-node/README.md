@@ -10,7 +10,7 @@ This package provides a **real direct-peer TCP/TLS transport** for local multi-p
 
 ## Current behavior
 
-Implemented: TCP listener/client, length-prefixed JSON frames, per-peer HMAC-SHA-256 message authentication, timestamp freshness checks, in-memory nonce replay rejection, frame-size limits, socket timeouts, and explicit peer allowlisting.
+Implemented: TCP listener/client, length-prefixed JSON frames, per-peer HMAC-SHA-256 message authentication, timestamp freshness checks, in-memory nonce replay rejection, frame-size limits, configurable active-connection caps (128 by default; maximum 4,096), socket timeouts, and explicit peer allowlisting.
 
 Mutual TLS (mTLS) is required by default. TLS 1.2 or newer is required. The client verifies the server certificate against the configured CA and checks the destination peer ID against the certificate DNS name. The server verifies the client certificate against its configured CA and binds the certificate common name (CN) to the envelope's `from` peer ID. This CN-based identity binding is an interim compatibility measure; a stable production protocol should use a reviewed URI-SAN identity profile and certificate lifecycle.
 
