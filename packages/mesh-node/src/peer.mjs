@@ -49,7 +49,10 @@ export class MeshPeer {
   async listen({ port = 0, host = this.host } = {}) {
     if (this.server) throw new Error("Peer is already listening");
     const server = this.tlsOptions
-      ? tls.createServer({ ...this.tlsOptions, requestCert: true, rejectUnauthorized: true, minVersion: "TLSv1.2" }, (socket) => this.#handleSocket(socket))
+      ? tls.createServer({ ...this.tlsOptions, requestCert: true, rejectUnauthorized: true, minVersion: "TLSv1.2" }, (socket) => {
+        if (!socket.authorized) return socket.destroy();
+        this.#handleSocket(socket);
+      })
       : net.createServer((socket) => this.#handleSocket(socket));
     this.server = server;
     await new Promise((resolve, reject) => {
