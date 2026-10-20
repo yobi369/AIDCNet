@@ -10,7 +10,7 @@ The goal is to evolve this into a useful, measurable, independently reviewable d
 
 - **Deterministic mesh lab:** calculates shortest paths and reachability over an in-memory graph. The graph is local application state, not a remote network.
 - **Experimental peer transport:** Node.js TCP framing and JSON message envelopes, per-peer HMAC-SHA-256 authentication, allowlisted senders, timestamp freshness checks, bounded frames, socket timeouts, and an in-memory nonce replay cache.
-- **Encrypted peer channel when correctly configured:** TLS 1.2+ mutual TLS (mTLS) is required by default. The client and server must be provisioned with certificates and a trusted CA. HMAC envelope authentication remains a separate application-layer check.
+- **Encrypted peer channel when correctly configured:** TLS 1.2+ mutual TLS (mTLS) is required by default. The client verifies the server DNS SAN against the destination peer ID; the server binds the client certificate CN to the envelope sender ID. This is an interim identity profile, not a managed certificate lifecycle. HMAC envelope authentication remains a separate application-layer check.
 - **Explicit local-only escape hatch:** plaintext transport requires `allowInsecure: true`. It is for isolated local tests only—not production or untrusted networks.
 - **Automated verification:** typecheck, front-end unit tests, real socket integration tests, mTLS certificate tests, and production frontend build run in GitHub Actions.
 
@@ -89,7 +89,7 @@ This snippet illustrates the API; it is not a complete deployment recipe. Verify
 | HMAC-SHA-256 | Authenticates the defined JSON envelope with a per-peer secret | Shared-secret distribution and rotation are not implemented; this is not a digital-signature identity system |
 | Replay detection | Timestamp window plus nonce cache per sender | Cache is in memory and resets on restart; no durable exactly-once guarantee |
 | Frame limits/timeouts | Rejects oversized/invalid frames and times out inactive sockets | Not a complete defense against connection floods or all resource-exhaustion attacks |
-| Sender allowlist | Only registered peer IDs are accepted at the envelope layer | Provisioning is manual; there is no discovery or membership consensus |
+| Sender allowlist and certificate binding | Registered sender IDs are required; in TLS mode the client certificate CN must match the envelope sender ID and the server DNS SAN must match the destination ID | CN binding is interim; certificate issuance, URI-SAN identity, revocation, rotation, and membership consensus are not implemented |
 
 The complete boundaries and residual risks are in [the threat model](docs/THREAT_MODEL.md). The wire behavior is documented in [the protocol notes](docs/PROTOCOL.md).
 

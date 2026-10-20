@@ -19,7 +19,7 @@ The current transport is a Node.js process that accepts one length-prefixed JSON
 
 - TLS certificates, private keys, CA bundles, and HMAC secrets are provisioned outside the application and are trusted to be correct.
 - A trusted CA can issue a certificate to an unintended party; certificate issuance policy and revocation are not managed here.
-- Peer registration is an administrator-controlled allowlist, not a consensus-backed membership protocol.
+- Peer registration is an administrator-controlled allowlist, not a consensus-backed membership protocol. TLS mode currently matches the client certificate subject CN to the envelope sender ID and the destination peer ID to the server certificate DNS SAN; this interim profile needs independent review and migration to a stable URI-SAN identity scheme.
 - The current replay cache and peer registry are process-local state.
 - Payloads are JSON objects. The transport does not define application-level authorization for commands embedded in a payload.
 - The implementation has not had an independent cryptographic or penetration review.
@@ -29,7 +29,7 @@ The current transport is a Node.js process that accepts one length-prefixed JSON
 | Threat | Present mitigation | Residual risk |
 |---|---|---|
 | Passive network observer | TLS/mTLS required by default | Misconfiguration, compromised endpoints, or explicit insecure opt-in can expose traffic |
-| Untrusted client connection | TLS client-certificate verification; registered sender required at envelope layer | Certificate identity is not currently bound to the envelope peer ID through a managed identity registry |
+| Untrusted client connection | TLS client-certificate verification; certificate CN must match envelope sender ID; registered sender required | CN is an interim binding; no managed URI-SAN identity registry, certificate lifecycle, or revocation |
 | Message alteration | TLS integrity plus HMAC envelope authentication | Shared-secret custody and rotation are external responsibilities |
 | Replay within one process | Timestamp freshness and per-sender nonce cache | Replay cache resets after restart and is not shared across replicas |
 | Oversized frame | 64 KiB frame limit | Many concurrent connections and repeated partial frames can still consume resources |
@@ -50,7 +50,7 @@ The current transport is a Node.js process that accepts one length-prefixed JSON
 
 ## Not yet solved
 
-- Certificate issuance, peer identity binding, revocation, renewal, and rotation.
+- Certificate issuance, revocation, renewal, and rotation; replace interim CN-based client identity binding with a reviewed URI-SAN identity profile.
 - Managed secret distribution and rotation.
 - Durable replay/idempotency state across restarts and replicas.
 - Durable delivery, acknowledgements beyond transport acceptance, retries, deduplication, ordering, backpressure, and congestion control.

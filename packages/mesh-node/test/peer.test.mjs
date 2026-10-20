@@ -17,7 +17,7 @@ function makeTlsMaterial() {
   const peers = {};
   for (const id of ["alice", "bob"]) {
     run(["req", "-newkey", "rsa:2048", "-nodes", "-keyout", id + "-key.pem", "-out", id + ".csr", "-subj", "/CN=" + id]);
-    writeFileSync(join(dir, id + ".ext"), ["subjectAltName=IP:127.0.0.1,DNS:localhost", "extendedKeyUsage=serverAuth,clientAuth", "keyUsage=digitalSignature,keyEncipherment", ""].join(String.fromCharCode(10)));
+    writeFileSync(join(dir, id + ".ext"), ["subjectAltName=IP:127.0.0.1,DNS:localhost,DNS:" + id, "extendedKeyUsage=serverAuth,clientAuth", "keyUsage=digitalSignature,keyEncipherment", ""].join(String.fromCharCode(10)));
     run(["x509", "-req", "-in", id + ".csr", "-CA", "ca.pem", "-CAkey", "ca-key.pem", "-CAcreateserial", "-out", id + "-cert.pem", "-days", "2", "-extfile", id + ".ext"]);
     peers[id] = { cert: readFileSync(join(dir, id + "-cert.pem")), key: readFileSync(join(dir, id + "-key.pem")) };
   }
@@ -165,4 +165,18 @@ test("rejects frames larger than the configured maximum", async (t) => {
   const response = await sendRaw(peers.bob.address, envelope);
   assert.equal(response.ok, false);
   assert.match(response.error, /frame too large|invalid frame length/i);
+});
+
+
+test("rejects a trusted TLS certificate whose peer identity disagrees with envelope sender", async (t) => {
+  const material = makeTlsMaterial(); t.after(() => material.cleanup());
+  const peers = await securePair(material); t.after(() => peers.close());
+  const imposter = new MeshPeer({ id: "imposter", tlsOptions: { ...material.peers.alice, ca: material.ca } });
+  peers.bob.registerPeer("imposter", { host: "127.0.0.1", port: 1, secret: sharedSecret });
+  imposter.registerPeer("bob", { ...peers.bob.address, secret: sharedSecret });
+  try {
+    await assert.rejects(imposter.send("bob", { kind: "identity-spoof" }), /certificate identity does not match envelope sender/i);
+  } finally {
+    await imposter.close();
+  }
 });
