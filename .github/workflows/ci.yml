@@ -37,5 +37,8 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Experimental TCP peer integration tests
+        run: node --test packages/mesh-node/test/*.test.mjs
+
       - name: Production build
         run: npm run build

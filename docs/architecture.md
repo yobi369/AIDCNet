@@ -12,7 +12,7 @@ The repository is presently a client-side React dashboard prototype.
 
 ## Not implemented
 
-There is currently no server, peer discovery, P2P transport, consensus, persistent message queue, node authentication, AI model, telemetry backend, key-management service, cryptographic handshake, or end-to-end encryption. There is no operational uptime measurement. UI labels must not be interpreted as evidence of those capabilities.
+The browser dashboard still has no live backend or peer discovery. A separate experimental Node.js package now implements TCP message transport with HMAC-based sender authentication, timestamp freshness checks, bounded frames, and process-local replay rejection. There is still no traffic encryption/TLS profile, persistent queue, consensus, AI model, telemetry backend, or key-management service. There is no operational uptime measurement. UI labels must not be interpreted as evidence of those capabilities.
 
 ## Recommended target architecture
 
@@ -20,8 +20,8 @@ Before production implementation, split the code into independently testable bou
 
 1. **Presentation layer** — views and accessible components; no security decisions.
 2. **Domain layer** — typed node, peer, message, route, and status models with deterministic unit tests.
-3. **Transport adapter** — explicitly defined protocol, connection lifecycle, backpressure, timeouts, and error handling.
-4. **Identity and trust** — authenticated peer identities, authorization rules, key lifecycle, and replay protection.
+3. **Transport adapter** — `packages/mesh-node` is an initial local TCP experiment with explicit framing, timeouts, and HMAC authentication. It is not encrypted and is not production-ready; add reviewed TLS/mTLS, backpressure, durable delivery, and protocol versioning.
+4. **Identity and trust** — current transport uses manually provisioned shared secrets and an allowlist; define certificate-backed identities, secure provisioning/rotation, authorization rules, and durable replay protection.
 5. **Security protocol** — maintained, standards-based cryptographic libraries and a documented threat model; no custom cryptographic primitives.
 6. **Observability** — measured counters, latency, errors, and health checks with provenance and timestamps.
 7. **Deployment** — reproducible dependency lockfile, automated CI, dependency and secret scanning, release process, and operational runbooks.
