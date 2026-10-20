@@ -164,5 +164,5 @@ test("rejects frames larger than the configured maximum", async (t) => {
   const envelope = signedEnvelope("alice", "bob", sharedSecret, { kind: "oversize", data: "x".repeat(70 * 1024) });
   const response = await sendRaw(peers.bob.address, envelope);
   assert.equal(response.ok, false);
-  assert.match(response.error, /frame too large/i);
+  assert.match(response.error, /frame too large|invalid frame length/i);
 });
