@@ -17,7 +17,10 @@ function makeTlsMaterial() {
   const peers = {};
   for (const id of ["alice", "bob"]) {
     run(["req", "-newkey", "rsa:2048", "-nodes", "-keyout", id + "-key.pem", "-out", id + ".csr", "-subj", "/CN=" + id]);
-    writeFileSync(join(dir, id + ".ext"), "subjectAltName=IP:127.0.0.1,DNS:localhost\nextendedKeyUsage=serverAuth,clientAuth\nkeyUsage=digitalSignature,keyEncipherment\n");
+    writeFileSync(join(dir, id + ".ext"), "subjectAltName=IP:127.0.0.1,DNS:localhost
+extendedKeyUsage=serverAuth,clientAuth
+keyUsage=digitalSignature,keyEncipherment
+");
     run(["x509", "-req", "-in", id + ".csr", "-CA", "ca.pem", "-CAkey", "ca-key.pem", "-CAcreateserial", "-out", id + "-cert.pem", "-days", "2", "-extfile", id + ".ext"]);
     peers[id] = { cert: readFileSync(join(dir, id + "-cert.pem")), key: readFileSync(join(dir, id + "-key.pem")) };
   }
@@ -58,7 +61,7 @@ test("mutual TLS listener rejects clients without a trusted certificate", async 
 });
 
 async function pair() {
-  const alice = new MeshPeer({ id: "alice" }); const bob = new MeshPeer({ id: "bob" });
+  const alice = new MeshPeer({ id: "alice", allowInsecure: true }); const bob = new MeshPeer({ id: "bob", allowInsecure: true });
   const aliceAddress = await alice.listen(); const bobAddress = await bob.listen();
   alice.registerPeer("bob", { ...bobAddress, secret: sharedSecret });
   bob.registerPeer("alice", { ...aliceAddress, secret: sharedSecret });
@@ -95,7 +98,7 @@ test("two TCP peers deliver an authenticated JSON message", async (t) => {
 
 test("rejects a sender that has not been allowlisted", async (t) => {
   const peers = await pair(); t.after(() => peers.close());
-  const intruder = new MeshPeer({ id: "intruder" }); const address = await intruder.listen();
+  const intruder = new MeshPeer({ id: "intruder", allowInsecure: true }); const address = await intruder.listen();
   intruder.registerPeer("bob", { ...peers.bob.address, secret: sharedSecret });
   try { await assert.rejects(intruder.send("bob", { kind: "unexpected" }), /Unauthorised sender/); }
   finally { await intruder.close(); }
@@ -125,6 +128,13 @@ test("rejects malformed zero-length frames", async (t) => {
     socket.on("data", (chunk) => { buffer = Buffer.concat([buffer, chunk]); if (buffer.length < 4) return; const length = buffer.readUInt32BE(0); if (buffer.length >= length + 4) { resolve(JSON.parse(buffer.subarray(4, length + 4).toString("utf8"))); socket.destroy(); } });
   });
   assert.equal(response.ok, false); assert.match(response.error, /frame length/i);
+});
+
+test("refuses unencrypted transport unless explicitly opted in", async () => {
+  const peer = new MeshPeer({ id: "secure-by-default" });
+  await assert.rejects(peer.listen(), /TLS is required/);
+  peer.registerPeer("bob", { host: "127.0.0.1", port: 1234, secret: sharedSecret });
+  await assert.rejects(peer.send("bob", { kind: "ping" }), /TLS is required/);
 });
 
 test("rejects weak secrets and invalid peer IDs", () => {
