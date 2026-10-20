@@ -32,10 +32,10 @@ function isPlainObject(value) { return value !== null && typeof value === "objec
  * localhost or a trusted isolated network until a reviewed TLS/mTLS profile exists.
  */
 export class MeshPeer {
-  constructor({ id, host = "127.0.0.1", maxClockSkewMs = MAX_CLOCK_SKEW_MS, socketTimeoutMs = DEFAULT_SOCKET_TIMEOUT_MS, tlsOptions = null } = {}) {
+  constructor({ id, host = "127.0.0.1", maxClockSkewMs = MAX_CLOCK_SKEW_MS, socketTimeoutMs = DEFAULT_SOCKET_TIMEOUT_MS, tlsOptions = null, allowInsecure = false } = {}) {
     if (typeof id !== "string" || !/^[a-zA-Z0-9._-]{1,64}$/.test(id)) throw new TypeError("Peer id must be 1-64 safe identifier characters");
     this.id = id; this.host = host; this.maxClockSkewMs = maxClockSkewMs; this.socketTimeoutMs = socketTimeoutMs;
-    this.peers = new Map(); this.replays = new Map(); this.server = null; this.address = null; this.emitMessage = null; this.tlsOptions = tlsOptions;
+    this.peers = new Map(); this.replays = new Map(); this.server = null; this.address = null; this.emitMessage = null; this.tlsOptions = tlsOptions; this.allowInsecure = allowInsecure;
   }
 
   registerPeer(id, { host = "127.0.0.1", port, secret, tlsOptions: peerTlsOptions = null } = {}) {
