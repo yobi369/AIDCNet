@@ -2,15 +2,16 @@
   "name": "aidcnet-prototype",
   "version": "0.2.0",
   "private": true,
-  "description": "React prototype for an AI-assisted decentralized network concept",
+  "description": "Experimental AI-oriented decentralized network research prototype",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:mesh": "node --test packages/mesh-node/test/*.test.mjs",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run test:mesh && npm run build"
   },
   "dependencies": {
     "lucide-react": "0.468.0",
