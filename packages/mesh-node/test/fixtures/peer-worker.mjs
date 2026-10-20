@@ -1,4 +1,4 @@
-import { MeshPeer } from "../src/peer.mjs";
+import { MeshPeer } from "../../src/peer.mjs";
 
 const secret = "local-development-secret-at-least-32-bytes";
 const peer = new MeshPeer({ id: "worker-peer", host: "127.0.0.1", allowInsecure: true });
