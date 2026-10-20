@@ -145,3 +145,24 @@ test("rejects non-object payloads before opening a connection", async () => {
   peer.registerPeer("bob", { host: "127.0.0.1", port: 1234, secret: sharedSecret });
   await assert.rejects(peer.send("bob", "not-an-object"), /JSON object/);
 });
+
+
+test("rejects stale signed envelopes before message delivery", async (t) => {
+  const peers = await pair(); t.after(() => peers.close());
+  let delivered = false;
+  peers.bob.emitMessage = () => { delivered = true; };
+  const envelope = signedEnvelope("alice", "bob", sharedSecret, { kind: "stale" });
+  envelope.timestamp -= 60_000;
+  const response = await sendRaw(peers.bob.address, envelope);
+  assert.equal(response.ok, false);
+  assert.match(response.error, /timestamp outside allowed window/i);
+  assert.equal(delivered, false);
+});
+
+test("rejects frames larger than the configured maximum", async (t) => {
+  const peers = await pair(); t.after(() => peers.close());
+  const envelope = signedEnvelope("alice", "bob", sharedSecret, { kind: "oversize", data: "x".repeat(70 * 1024) });
+  const response = await sendRaw(peers.bob.address, envelope);
+  assert.equal(response.ok, false);
+  assert.match(response.error, /frame too large/i);
+});
