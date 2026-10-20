@@ -34,6 +34,8 @@ The build and tests validate the front-end scaffold and its small utility layer;
 
 ## Architecture today
 
+- `packages/mesh-node/` — experimental Node.js TCP peer transport with HMAC-SHA-256 message authentication, bounded frames, timestamp freshness checks, and in-memory replay rejection. It is not encrypted and must not be exposed to the public internet; see its package README for limitations.
+
 - `aidcnet_prototype.tsx` — single-file dashboard prototype with network, AI metrics, message-routing, and cryptography panels.
 - `src/lib/demoMetrics.ts` — bounded metric helper used by the simulated dashboard.
 - `AIDCNet_ Technical Specification & Implementation Guide.pdf` — project concept and implementation guide.
@@ -42,10 +44,10 @@ The build and tests validate the front-end scaffold and its small utility layer;
 
 1. Replace random UI state with explicit, typed demo fixtures and a documented data model.
 2. Separate UI components, domain logic, transport adapters, and configuration.
-3. Define a threat model and protocol specification before implementing networking or cryptography.
-4. Use maintained, audited cryptographic libraries; do not implement cryptographic primitives from scratch. Verify algorithm names and parameters against current standards.
+3. Complete the threat model and protocol specification for the experimental TCP transport; add a reviewed TLS/mTLS deployment profile before use beyond trusted local experiments.
+4. Keep using maintained cryptographic primitives (the current transport uses Node.js crypto HMAC); do not implement primitives from scratch. Add reviewed TLS/mTLS and key provisioning before treating transport as secure.
 5. Implement authenticated peer identity, message integrity, replay protection, key lifecycle, and secure failure handling before claiming secure transport.
-6. Add integration tests for actual message transport, adversarial tests, dependency scanning, and reproducible locked builds.
+6. Expand the new local TCP integration tests with replay/tamper, malformed-frame, disconnect, resource-exhaustion, and multi-process adversarial cases; add dependency scanning and reproducible locked builds.
 7. Publish measured performance and availability only when supported by instrumentation and repeatable tests.
 
 ## Security and reporting
